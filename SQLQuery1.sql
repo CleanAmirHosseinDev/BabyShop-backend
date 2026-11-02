@@ -1,2 +1,0 @@
-﻿CREATE USER [DESKTOP-S6LRO94\MatriX] FOR LOGIN [DESKTOP-S6LRO94\MatriX];
-EXEC sp_addrolemember 'db_owner', [DESKTOP-S6LRO94\MatriX];

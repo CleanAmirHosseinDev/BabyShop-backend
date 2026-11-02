@@ -97,17 +97,12 @@ public class UserRepository : IUserRepository
     {
         using var connection = new SqlConnection(_connectionString);
 
-        Console.WriteLine($"=== UpdateVerificationCode called ===");
-        Console.WriteLine($"UserId: {userId}");
-        Console.WriteLine($"Code: {code}");
-
+        // کد تأیید هرگز نباید لاگ شود؛ فقط آن را در دیتابیس می‌نویسیم.
         await connection.ExecuteAsync(
             "UpdateVerificationCode",
             new { UserId = userId, Code = code },
             commandType: CommandType.StoredProcedure
         );
-
-        Console.WriteLine("=== UpdateVerificationCode completed ===");
     }
 
     public async Task VerifyPhoneAsync(int userId)

@@ -1,9 +1,13 @@
-﻿using BabyShop.Application.Dtos.Auth;
+﻿using BabyShop.Application.Dtos;
+using BabyShop.Application.Dtos.Auth;
 using BabyShop.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BabyShop.API.Controllers;
 
+// مسیرهای احراز هویت سقف سخت‌گیرانهٔ درخواست دارند تا کد ۶ رقمی قابل brute-force نباشد.
+[EnableRateLimiting("auth")]
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase

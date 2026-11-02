@@ -34,7 +34,7 @@ public class Product : BaseEntity
         SetSlug(name);
         SetDescription(description);
         SetPrice(price);
-        CategoryId = categoryId;
+        SetCategory(categoryId);
         SetGender(gender);
         SetAgeRange(ageRange);
         CreatedAt = DateTime.UtcNow;
@@ -54,7 +54,19 @@ public class Product : BaseEntity
     public void SetSlug(string slug) => Slug = slug.Trim().ToLower().Replace(" ", "-");
     public void SetImageUrl(string imageUrl) => ImageUrl = imageUrl;
     public void SetMainImage(string imageUrl) => MainImage = imageUrl;
+
+    public void SetCategory(int categoryId)
+    {
+        if (categoryId <= 0) throw new BusinessRuleException("دسته‌بندی محصول الزامی است");
+        CategoryId = categoryId;
+    }
+
     public int StockQuantity => Inventory?.CurrentStock ?? 0;
+
+    public void Deactivate() { IsActive = false; UpdatedAt = DateTime.UtcNow; }
+    public void Activate() { IsActive = true; UpdatedAt = DateTime.UtcNow; }
+
+    public void IncrementViewCount() => ViewCount++;
 
     private void SetName(string name)
     {

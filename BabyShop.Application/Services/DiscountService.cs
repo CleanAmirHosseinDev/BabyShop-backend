@@ -23,7 +23,7 @@ public class DiscountService : IDiscountService
             return await Task.FromResult(discount);
         }
 
-        // کد تخفیف نامعتبر
+        // کد تخفیف نامعتبر → بدون تخفیف
         return await Task.FromResult(0m);
     }
 }

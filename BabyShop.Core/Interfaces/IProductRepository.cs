@@ -37,4 +37,7 @@ public interface IProductRepository
     Task<IReadOnlyList<Product>> GetByAgeRangeAsync(AgeRange ageRange);
     Task<IReadOnlyList<Product>> GetLowStockProductsAsync(int threshold);
     Task<bool> CategoryExistsAsync(int categoryId);
+
+    /// <summary>جمع موجودی همهٔ سایزهای هر محصول، برای لیست‌های صفحه‌بندی‌شده (یک کوئری، بدون N+1).</summary>
+    Task<IReadOnlyDictionary<int, int>> GetStockTotalsAsync(IEnumerable<int> productIds);
 }

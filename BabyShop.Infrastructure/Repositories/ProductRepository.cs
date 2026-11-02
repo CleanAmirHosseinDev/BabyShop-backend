@@ -363,6 +363,25 @@ public class ProductRepository : IProductRepository
         return count > 0;
     }
 
+    public async Task<IReadOnlyDictionary<int, int>> GetStockTotalsAsync(IEnumerable<int> productIds)
+    {
+        var ids = productIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<int, int>();
+
+        using var connection = new SqlConnection(_connectionString);
+
+        var rows = await connection.QueryAsync<(int ProductId, int TotalStock)>(
+            @"SELECT i.ProductId, ISNULL(SUM(i.CurrentStock), 0) AS TotalStock
+              FROM Inventories i
+              WHERE i.ProductId IN @Ids AND ISNULL(i.IsDeleted, 0) = 0
+              GROUP BY i.ProductId",
+            new { Ids = ids }
+        );
+
+        return rows.ToDictionary(r => r.ProductId, r => r.TotalStock);
+    }
+
     public async Task DeleteAsync(Product entity)
     {
         await DeleteProductAsync(entity.Id);

@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="BabyShop.API/BabyShop.API.csproj" />
-  <Project Path="BabyShop.Application/BabyShop.Application.csproj" />
-  <Project Path="BabyShop.Core/BabyShop.Core.csproj" />
-  <Project Path="BabyShop.Infrastructure/BabyShop.Infrastructure.csproj" />
-</Solution>
