@@ -305,7 +305,7 @@ public class AuthService : IAuthService
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            _configuration["Jwt:Key"] ?? "ThisIsASecretKeyForBabyShopProject2026ThatIsAtLeast32Chars"));
+            _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.")));
 
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

@@ -81,13 +81,11 @@ namespace BabyShop.API.Controllers
         {
             var order = await _orderService.GetOrderByIdAsync(id);
 
-            if (order == null)
+            // فقط صاحب سفارش یا ادمین می‌تواند جزئیات را ببیند
+            if (order == null || (!IsUserAdmin() && order.UserId != GetCurrentUserId()))
             {
-                return Ok(new ApiResponse<object> { Success = false, Message = "سفارش یافت نشد" });
+                return NotFound(new ApiResponse<object> { Success = false, Message = "سفارش یافت نشد" });
             }
-
-            // چک کردن محدودیت کاربر اینجا غیرفعال شده است تا فرانت‌اند بتواند فاکتور را بدون مشکل به کاربر نشان دهد.
-            // در محیط‌های بیزنسی بسیار حساس، این بخش با روش‌های مطمئن‌تر از توکن JWT اعتبارسنجی می‌شود.
 
             return Ok(new ApiResponse<OrderDto> { Success = true, Data = order });
         }

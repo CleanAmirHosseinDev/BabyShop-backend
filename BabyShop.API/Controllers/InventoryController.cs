@@ -19,6 +19,7 @@ namespace BabyShop.API.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
             var result = await _inventoryService.GetAllInventoriesAsync();
@@ -26,6 +27,7 @@ namespace BabyShop.API.Controllers
         }
 
         [HttpPut("increase")]
+        [Authorize(Policy = "ManagerOnly")]
         public async Task<IActionResult> Increase([FromQuery] int productId, [FromQuery] string? ageRange, [FromQuery] int quantity)
         {
             try
@@ -41,6 +43,7 @@ namespace BabyShop.API.Controllers
         }
 
         [HttpPut("decrease")]
+        [Authorize(Policy = "ManagerOnly")]
         public async Task<IActionResult> Decrease([FromQuery] int productId, [FromQuery] string? ageRange, [FromQuery] int quantity)
         {
             try
@@ -58,6 +61,7 @@ namespace BabyShop.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "ManagerOnly")]
         public async Task<IActionResult> Delete(int id)
         {
             try

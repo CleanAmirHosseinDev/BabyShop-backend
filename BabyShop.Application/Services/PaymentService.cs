@@ -20,17 +20,24 @@ namespace BabyShop.Application.Services
         }
 
         // ۱. ایجاد تراکنش پرداخت جدید (متصل به درگاه)
-        public async Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto dto)
+        public async Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto dto, int currentUserId, bool isStaff)
         {
             var order = await _orderRepository.GetByIdAsync(dto.OrderId);
             if (order == null) throw new NotFoundException("سفارش مورد نظر یافت نشد.");
+
+            // سفارش باید متعلق به کاربر جاری باشد (مگر کارمند)
+            if (!isStaff && order.UserId != currentUserId)
+                throw new BusinessRuleException("شما دسترسی به این سفارش ندارید.");
 
             // جلوگیری از پرداختِ سفارشی که قبلاً پرداخت شده
             if (order.Status == "Paid")
                 throw new BusinessRuleException("این سفارش قبلاً پرداخت شده است.");
 
-            // ایجاد آبجکت Payment برای دیتابیس
-            var payment = new Payment(dto.OrderId, dto.Amount, dto.PaymentMethod);
+            if (order.Status is "Cancelled" or "Refunded")
+                throw new BusinessRuleException("این سفارش قابل پرداخت نیست.");
+
+            // مبلغ همیشه سمت سرور از روی کل سفارش محاسبه می‌شود
+            var payment = new Payment(order.Id, order.TotalAmount, dto.PaymentMethod);
 
             // تولید یه کد آتوریتی رندوم (شبیه سازی بازگشت از درگاه شاپرک)
             payment.SetAuthority($"ZIIZII-{Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper()}");
@@ -40,25 +47,32 @@ namespace BabyShop.Application.Services
         }
 
         // ۲. تایید نهایی پرداخت (هنگام برگشت از درگاه بانک)
-        public async Task<PaymentDto> VerifyPaymentAsync(int paymentId, string referenceNumber)
+        public async Task<PaymentDto> VerifyPaymentAsync(int paymentId, string referenceNumber, int currentUserId, bool isStaff)
         {
             var payment = await _paymentRepository.GetByIdAsync(paymentId);
             if (payment == null) throw new NotFoundException("تراکنش یافت نشد.", paymentId);
 
-            if (payment.Status == "Successful")
-                throw new BusinessRuleException("این تراکنش قبلاً تایید شده است.");
+            var order = await _orderRepository.GetByIdAsync(payment.OrderId);
+            if (order == null) throw new NotFoundException("سفارش", payment.OrderId);
+
+            // تراکنش باید متعلق به سفارشِ کاربر جاری باشد (مگر کارمند)
+            if (!isStaff && order.UserId != currentUserId)
+                throw new BusinessRuleException("شما دسترسی به این تراکنش ندارید.");
+
+            // اگر قبلا‌ً تایید شده، همان نتیجه را برمی‌گردانیم (idempotent)
+            if (payment.Status == "Paid")
+                return MapToDto(payment);
+
+            if (order.Status is "Cancelled" or "Refunded")
+                throw new BusinessRuleException("این سفارش قابل تایید پرداخت نیست.");
 
             // تایید پرداخت و ثبت شماره پیگیری بانک
             payment.Verify(referenceNumber);
             await _paymentRepository.UpdateAsync(payment);
 
             // حالا باید وضعیت سفارش اصلی رو هم بکنیم 'پرداخت شده'
-            var order = await _orderRepository.GetByIdAsync(payment.OrderId);
-            if (order != null)
-            {
-                order.MarkAsPaid();
-                await _orderRepository.UpdateAsync(order);
-            }
+            order.MarkAsPaid();
+            await _orderRepository.UpdateAsync(order);
 
             return MapToDto(payment);
         }

@@ -3,6 +3,8 @@ using BabyShop.Application.Interfaces.Services;
 using BabyShop.Core.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Security.Claims;
 
 namespace BabyShop.API.Controllers;
 
@@ -14,19 +16,33 @@ public class PaymentController : ControllerBase
     private readonly IPaymentService _paymentService;
     private readonly ILogger<PaymentController> _logger;
 
-    public PaymentController(IPaymentService paymentService, ILogger<PaymentController> logger)
-    {
-        _paymentService = paymentService;
-        _logger = logger;
-    }
-
-    // ۱. ایجاد تراکنش پرداخت جدید
-    [HttpPost]
-    public async Task<ActionResult<ApiResponse<PaymentDto>>> Create([FromBody] CreatePaymentDto dto)
-    {
-        try
+        public PaymentController(IPaymentService paymentService, ILogger<PaymentController> logger)
         {
-            var payment = await _paymentService.CreatePaymentAsync(dto);
+            _paymentService = paymentService;
+            _logger = logger;
+        }
+
+        private int GetCurrentUserId()
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                        ?? User.FindFirst("sub")?.Value
+                        ?? User.FindFirst("userId")?.Value;
+
+            if (int.TryParse(claim, out var userId) && userId > 0)
+                return userId;
+
+            throw new UnauthorizedAccessException("User ID not found in token");
+        }
+
+        private bool IsStaff() => User.IsInRole("Admin") || User.IsInRole("Manager");
+
+        // ۱. ایجاد تراکنش پرداخت جدید
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<PaymentDto>>> Create([FromBody] CreatePaymentDto dto)
+        {
+            try
+            {
+                var payment = await _paymentService.CreatePaymentAsync(dto, GetCurrentUserId(), IsStaff());
             return Ok(new ApiResponse<PaymentDto> { Success = true, Data = payment });
         }
         catch (NotFoundException ex)
@@ -39,9 +55,10 @@ public class PaymentController : ControllerBase
         }
     }
 
-    // ۲. دریافت اطلاعات پرداخت بر اساس شماره سفارش
-    [HttpGet("order/{orderId}")]
-    public async Task<ActionResult<ApiResponse<PaymentDto>>> GetByOrder(int orderId)
+        // ۲. دریافت اطلاعات پرداخت بر اساس شماره سفارش
+        [HttpGet("order/{orderId}")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<ApiResponse<PaymentDto>>> GetByOrder(int orderId)
     {
         var payment = await _paymentService.GetPaymentByOrderIdAsync(orderId);
         if (payment == null)
@@ -51,12 +68,12 @@ public class PaymentController : ControllerBase
     }
 
     // ۳. تایید نهایی پرداخت (Verify) - اصلاح شده برای هماهنگی با فرانت
-    [HttpPost("verify")]
-    public async Task<ActionResult<ApiResponse<PaymentDto>>> Verify(int paymentId, string referenceNumber)
-    {
-        try
+        [HttpPost("verify")]
+        public async Task<ActionResult<ApiResponse<PaymentDto>>> Verify(int paymentId, string referenceNumber)
         {
-            var payment = await _paymentService.VerifyPaymentAsync(paymentId, referenceNumber);
+            try
+            {
+                var payment = await _paymentService.VerifyPaymentAsync(paymentId, referenceNumber, GetCurrentUserId(), IsStaff());
             return Ok(new ApiResponse<PaymentDto> { Success = true, Data = payment, Message = "Payment verified" });
         }
         catch (NotFoundException ex)

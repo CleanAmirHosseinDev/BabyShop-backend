@@ -1,6 +1,7 @@
 ﻿using BabyShop.Application.Dtos;
 using BabyShop.Application.Interfaces.Services;
 using BabyShop.Core.Entities;
+using BabyShop.Core.Exceptions;
 using BabyShop.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using System;
@@ -56,10 +57,14 @@ namespace BabyShop.Application.Services
 
             foreach (var item in dto.Items)
             {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product == null) throw new Exception("محصول یافت نشد");
+                if (item.Quantity <= 0)
+                    throw new BusinessRuleException("تعداد اقلام باید بیشتر از صفر باشد.");
 
-                order.AddItem(item.ProductId, product.Name, item.Quantity, item.UnitPrice);
+                var product = await _productRepository.GetByIdAsync(item.ProductId)
+                    ?? throw new NotFoundException("محصول", item.ProductId);
+
+                // قیمت همیشه سمت سرور از روی قیمت فعلی محصول محاسبه می‌شود
+                order.AddItem(item.ProductId, product.Name, item.Quantity, product.Price);
 
                 // کسر از انبار
                 await _inventoryService.DecreaseStockAsync(item.ProductId, item.Quantity);
@@ -71,15 +76,34 @@ namespace BabyShop.Application.Services
 
         public async Task<OrderDto> UpdateOrderStatusAsync(UpdateOrderStatusDto dto)
         {
-            var order = await _orderRepository.GetByIdAsync(dto.OrderId);
-            if (order == null) throw new Exception("Order not found");
+            var order = await _orderRepository.GetByIdAsync(dto.OrderId)
+                ?? throw new NotFoundException("سفارش", dto.OrderId);
 
+            // ماشین وضعیت سفارش: هر انتقال فقط از وضعیت‌های مجاز
             switch (dto.Status.ToLower())
             {
-                case "paid": order.MarkAsPaid(); break;
-                case "shipped": order.MarkAsShipped(); break;
-                case "delivered": order.MarkAsDelivered(); break;
-                case "cancelled": order.Cancel(dto.Reason ?? "No reason"); break;
+                case "paid":
+                    if (order.Status != "Pending")
+                        throw new BusinessRuleException("فقط سفارش‌های در انتظار، قابل پرداخت هستند.");
+                    order.MarkAsPaid();
+                    break;
+                case "shipped":
+                    if (order.Status != "Paid")
+                        throw new BusinessRuleException("سفارش قبل از ارسال باید پرداخت شده باشد.");
+                    order.MarkAsShipped();
+                    break;
+                case "delivered":
+                    if (order.Status != "Shipped")
+                        throw new BusinessRuleException("سفارش قبل از تحویل باید ارسال شده باشد.");
+                    order.MarkAsDelivered();
+                    break;
+                case "cancelled":
+                    if (order.Status is "Delivered" or "Refunded")
+                        throw new BusinessRuleException("این سفارش قابل لغو نیست.");
+                    order.Cancel(dto.Reason ?? "No reason");
+                    break;
+                default:
+                    throw new BusinessRuleException("وضعیت نامعتبر است.");
             }
 
             await _orderRepository.UpdateAsync(order);
@@ -107,14 +131,21 @@ namespace BabyShop.Application.Services
 
         public async Task<OrderDto> CreateOrderFromBasketAsync(CreateOrderFromBasketDto dto)
         {
-            var basket = await _basketRepository.GetBasketWithItemsAsync(dto.BasketId);
-            if (basket == null) throw new Exception("سبد یافت نشد");
+            var basket = await _basketRepository.GetBasketWithItemsAsync(dto.BasketId)
+                ?? throw new NotFoundException("سبد", dto.BasketId);
+
+            // سبد باید متعلق به همان کاربری باشد که سفارش را ثبت می‌کند
+            if (basket.UserId != dto.UserId)
+                throw new BusinessRuleException("شما دسترسی به این سبد خرید ندارید.");
 
             var order = new Order(basket.UserId, dto.ShippingAddress, dto.PhoneNumber, dto.Email ?? "");
             foreach (var item in basket.Items)
             {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                order.AddItem(item.ProductId, product?.Name ?? "کالا", item.Quantity, item.UnitPrice);
+                var product = await _productRepository.GetByIdAsync(item.ProductId)
+                    ?? throw new NotFoundException("محصول", item.ProductId);
+
+                // قیمت همیشه سمت سرور از روی قیمت فعلی محصول محاسبه می‌شود
+                order.AddItem(item.ProductId, product.Name, item.Quantity, product.Price);
                 await _inventoryService.DecreaseStockAsync(item.ProductId, item.Quantity);
             }
 
@@ -125,13 +156,12 @@ namespace BabyShop.Application.Services
 
         public async Task<OrderDto> CancelOrderAsync(int orderId, string reason)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId);
-            if (order != null)
-            {
-                order.Cancel(reason);
-                await _orderRepository.UpdateAsync(order);
-            }
-            return MapToDto(order!);
+            var order = await _orderRepository.GetByIdAsync(orderId)
+                ?? throw new NotFoundException("سفارش", orderId);
+
+            order.Cancel(reason);
+            await _orderRepository.UpdateAsync(order);
+            return MapToDto(order);
         }
 
         private OrderDto MapToDto(Order order)
