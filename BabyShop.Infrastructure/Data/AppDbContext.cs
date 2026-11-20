@@ -66,7 +66,12 @@ namespace BabyShop.Infrastructure.Data
             modelBuilder.Entity<Product>(entity => {
                 entity.HasKey(p => p.Id);
                 entity.Property(p => p.Name).IsRequired().HasMaxLength(200);
+                entity.Property(p => p.Slug).IsRequired().HasMaxLength(250);
+                entity.Property(p => p.Description).HasMaxLength(4000);
+                entity.Property(p => p.MainImage).HasMaxLength(500);
+                entity.Property(p => p.ImageUrl).HasMaxLength(500);
                 entity.Property(p => p.Price).HasPrecision(18, 2);
+                entity.HasIndex(p => p.Slug).IsUnique();
 
                 // تبدیل AgeRange به استرینگ در دیتابیس
                 entity.Property(p => p.AgeRange)
@@ -91,10 +96,26 @@ namespace BabyShop.Infrastructure.Data
             modelBuilder.Entity<Inventory>(entity => {
                 entity.HasKey(i => i.Id);
                 entity.HasOne(i => i.Product)
-                      .WithMany()
+                      .WithMany(p => p.Inventories)
                       .HasForeignKey(i => i.ProductId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // Inventory: یک محصول در هر رده سنی فقط یک رکورد موجودی دارد
+            modelBuilder.Entity<Inventory>()
+                .Property(i => i.Location)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Inventory>()
+                .Property(i => i.AgeRange)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            modelBuilder.Entity<Inventory>()
+                .HasIndex(i => new { i.ProductId, i.AgeRange })
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0")
+                .HasDatabaseName("IX_Inventories_ProductId_AgeRange");
 
             // Order Configuration
             modelBuilder.Entity<Order>(entity => {
@@ -117,7 +138,10 @@ namespace BabyShop.Infrastructure.Data
                 entity.HasKey(i => i.Id);
                 entity.Property(i => i.ProductName).IsRequired().HasMaxLength(200);
                 entity.Property(i => i.UnitPrice).IsRequired().HasPrecision(18, 2);
-                entity.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(i => i.Product)
+                      .WithMany(p => p.OrderItems)
+                      .HasForeignKey(i => i.ProductId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Payment Configuration
@@ -131,6 +155,151 @@ namespace BabyShop.Infrastructure.Data
             modelBuilder.Entity<Delivery>(entity => {
                 entity.HasKey(d => d.Id);
                 entity.HasOne(d => d.Order).WithOne(o => o.Delivery).HasForeignKey<Delivery>(d => d.OrderId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Basket Configuration
+            modelBuilder.Entity<Basket>(entity => {
+                entity.HasKey(b => b.Id);
+                entity.Property(b => b.Status).IsRequired().HasMaxLength(30);
+                entity.Property(b => b.DiscountCode).HasMaxLength(50);
+                entity.Property(b => b.SessionId).HasMaxLength(100);
+                entity.Property(b => b.IpAddress).HasMaxLength(45);
+                entity.Property(b => b.UserAgent).HasMaxLength(500);
+                entity.Property(b => b.TotalPrice).HasPrecision(18, 2);
+                entity.Property(b => b.DiscountAmount).HasPrecision(18, 2);
+                entity.Property(b => b.DiscountPercentage).HasPrecision(5, 2);
+                entity.HasOne(b => b.User)
+                      .WithMany()
+                      .HasForeignKey(b => b.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasMany(b => b.Items)
+                      .WithOne(i => i.Basket)
+                      .HasForeignKey(i => i.BasketId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // BasketItem Configuration
+            modelBuilder.Entity<BasketItem>(entity => {
+                entity.HasKey(i => i.Id);
+                entity.Property(i => i.UnitPrice).HasPrecision(18, 2);
+                entity.Property(i => i.DiscountPerUnit).HasPrecision(18, 2);
+                entity.HasOne(i => i.Product)
+                      .WithMany(p => p.BasketItems)
+                      .HasForeignKey(i => i.ProductId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Wishlist Configuration
+            modelBuilder.Entity<Wishlist>(entity => {
+                entity.HasKey(w => w.Id);
+                entity.HasIndex(w => new { w.UserId, w.ProductId }).IsUnique().HasFilter("[IsDeleted] = 0");
+                entity.HasOne(w => w.User)
+                      .WithMany()
+                      .HasForeignKey(w => w.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(w => w.Product)
+                      .WithMany()
+                      .HasForeignKey(w => w.ProductId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+            modelBuilder.Entity<Wishlist>().HasQueryFilter(w => !w.IsDeleted);
+
+            // Role / Permission
+            modelBuilder.Entity<Role>(entity => {
+                entity.Property(r => r.Name).IsRequired().HasMaxLength(50);
+                entity.Property(r => r.Description).HasMaxLength(200);
+                entity.HasIndex(r => r.Name).IsUnique();
+            });
+
+            modelBuilder.Entity<Permission>(entity => {
+                entity.Property(p => p.Name).IsRequired().HasMaxLength(50);
+                entity.Property(p => p.Module).HasMaxLength(50);
+                entity.Property(p => p.Group).HasMaxLength(50);
+                entity.Property(p => p.Description).HasMaxLength(200);
+                entity.HasIndex(p => p.Name).IsUnique();
+            });
+
+            modelBuilder.Entity<UserRole>(entity => {
+                entity.HasIndex(ur => new { ur.UserId, ur.RoleId }).IsUnique();
+            });
+
+            modelBuilder.Entity<RolePermission>(entity => {
+                entity.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
+            });
+
+            // SupportTicket / TicketReply
+            modelBuilder.Entity<SupportTicket>(entity => {
+                entity.Property(t => t.TicketNumber).IsRequired().HasMaxLength(50);
+                entity.Property(t => t.Subject).IsRequired().HasMaxLength(200);
+                entity.Property(t => t.Status).IsRequired().HasMaxLength(20);
+                entity.Property(t => t.Priority).IsRequired().HasMaxLength(20);
+                entity.Property(t => t.Category).IsRequired().HasMaxLength(100);
+                entity.HasIndex(t => t.TicketNumber).IsUnique();
+                entity.HasIndex(t => t.Status);
+                entity.HasIndex(t => t.CreatedAt);
+                entity.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(t => t.Order).WithMany().HasForeignKey(t => t.OrderId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(t => t.Product).WithMany().HasForeignKey(t => t.ProductId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasMany(t => t.Replies).WithOne(r => r.Ticket).HasForeignKey(r => r.TicketId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // TicketReply: مسیرهای cascade تکراری روی Users نباشند
+            modelBuilder.Entity<TicketReply>(entity => {
+                entity.Property(r => r.Message).IsRequired().HasMaxLength(2000);
+                entity.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Category
+            modelBuilder.Entity<Category>(entity => {
+                entity.Property(c => c.Name).IsRequired().HasMaxLength(100);
+                entity.Property(c => c.Slug).IsRequired().HasMaxLength(100);
+                entity.Property(c => c.Description).HasMaxLength(500);
+                entity.Property(c => c.ImageUrl).HasMaxLength(500);
+                entity.HasIndex(c => c.Slug).IsUnique();
+                entity.HasOne(c => c.ParentCategory)
+                      .WithMany(c => c.SubCategories)
+                      .HasForeignKey(c => c.ParentCategoryId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Payment
+            modelBuilder.Entity<Payment>(entity => {
+                entity.Property(p => p.Status).IsRequired().HasMaxLength(20);
+                entity.Property(p => p.PaymentMethod).IsRequired().HasMaxLength(50);
+                entity.Property(p => p.Authority).HasMaxLength(50);
+                entity.Property(p => p.ReferenceNumber).HasMaxLength(100);
+                entity.Property(p => p.RefundReason).HasMaxLength(500);
+                entity.HasIndex(p => p.Authority).IsUnique().HasFilter("[Authority] IS NOT NULL");
+            });
+
+            // Delivery
+            modelBuilder.Entity<Delivery>(entity => {
+                entity.Property(d => d.Address).IsRequired().HasMaxLength(500);
+                entity.Property(d => d.PhoneNumber).IsRequired().HasMaxLength(15);
+                entity.Property(d => d.PostalCode).IsRequired().HasMaxLength(20);
+                entity.Property(d => d.Status).IsRequired().HasMaxLength(20);
+                entity.Property(d => d.Carrier).HasMaxLength(50);
+                entity.Property(d => d.TrackingNumber).HasMaxLength(50);
+            });
+
+            // Order
+            modelBuilder.Entity<Order>(entity => {
+                entity.Property(o => o.Email).HasMaxLength(100);
+                entity.Property(o => o.CustomerNote).HasMaxLength(500);
+                entity.Property(o => o.AdminNote).HasMaxLength(500);
+                entity.Property(o => o.CancellationReason).HasMaxLength(500);
+                entity.Property(o => o.UserName).HasMaxLength(100);
+            });
+
+            // Basket indexes
+            modelBuilder.Entity<Basket>(entity => {
+                entity.HasIndex(b => b.SessionId);
+                entity.HasIndex(b => b.Status);
+                entity.HasIndex(b => b.CreatedAt);
+            });
+
+            modelBuilder.Entity<BasketItem>(entity => {
+                entity.HasIndex(i => new { i.BasketId, i.ProductId }).IsUnique().HasFilter("[IsDeleted] = 0");
             });
 
             base.OnModelCreating(modelBuilder);

@@ -306,17 +306,7 @@ app.MapControllers();
 app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") });
 
-// ---------- زمان‌بندی job های دوره‌ای Hangfire ----------
-try
-{
-    RegisterRecurringJobs();
-}
-catch (Exception ex)
-{
-    app.Logger.LogWarning(ex, "Failed to register Hangfire recurring jobs.");
-}
-
-// ---------- آماده‌سازی دیتابیس (migration/seed) ----------
+// ---------- آماده‌سازی دیتابیس (migration/seed) + زمان‌بندی job ها ----------
 using (var scope = app.Services.CreateScope())
 {
     try
@@ -328,22 +318,31 @@ using (var scope = app.Services.CreateScope())
         scope.ServiceProvider.GetRequiredService<ILogger<Program>>()
             .LogError(ex, "An error occurred while initializing the database.");
     }
+
+    try
+    {
+        RegisterRecurringJobs(scope.ServiceProvider.GetRequiredService<IRecurringJobManager>());
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Failed to register Hangfire recurring jobs.");
+    }
 }
 
 app.Run();
 
 // job ها باید Idempotent باشند تا چند نمونه از اپ در یک زمان مشکلی ایجاد نکند.
-static void RegisterRecurringJobs()
+static void RegisterRecurringJobs(IRecurringJobManager recurringJobs)
 {
-    RecurringJob.AddOrUpdate<IJobService>(
+    recurringJobs.AddOrUpdate<IJobService>(
         "daily-sales-report", svc => svc.GenerateDailySalesReportAsync(), Cron.Daily(hour: 8, minute: 0));
 
-    RecurringJob.AddOrUpdate<IJobService>(
+    recurringJobs.AddOrUpdate<IJobService>(
         "low-stock-check", svc => svc.CheckLowStockAsync(), Cron.Hourly());
 
-    RecurringJob.AddOrUpdate<IJobService>(
+    recurringJobs.AddOrUpdate<IJobService>(
         "abandoned-carts-cleanup", svc => svc.CleanupAbandonedCartsAsync(), Cron.Weekly(dayOfWeek: DayOfWeek.Saturday, hour: 4));
 
-    RecurringJob.AddOrUpdate<IJobService>(
+    recurringJobs.AddOrUpdate<IJobService>(
         "monthly-report", svc => svc.SendMonthlyReportAsync(), Cron.Monthly(day: 1, hour: 7));
 }

@@ -17,7 +17,7 @@ namespace BabyShop.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "8.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -64,16 +64,12 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Active");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<decimal>("TotalPrice")
-                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -125,9 +121,6 @@ namespace BabyShop.Infrastructure.Migrations
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ProductId1")
-                        .HasColumnType("int");
-
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
@@ -140,14 +133,11 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BasketId");
-
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("ProductId1");
-
                     b.HasIndex("BasketId", "ProductId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("BasketItems");
                 });
@@ -172,18 +162,14 @@ namespace BabyShop.Infrastructure.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("DisplayOrder")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("int");
 
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -287,13 +273,16 @@ namespace BabyShop.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AgeRange")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("CurrentStock")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
@@ -303,41 +292,33 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.Property<string>("Location")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasDefaultValue("Main Warehouse");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("MaximumStockLevel")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1000);
+                        .HasColumnType("int");
 
                     b.Property<int>("MinimumStockLevel")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(5);
+                        .HasColumnType("int");
 
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
 
                     b.Property<int>("ReorderPoint")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(10);
+                        .HasColumnType("int");
 
                     b.Property<int>("ReservedStock")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId")
-                        .IsUnique();
+                    b.HasIndex("ProductId", "AgeRange")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Inventories_ProductId_AgeRange")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Inventories");
                 });
@@ -353,9 +334,6 @@ namespace BabyShop.Infrastructure.Migrations
                     b.Property<string>("AdminNote")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("ArchivedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
@@ -383,13 +361,7 @@ namespace BabyShop.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("IsArchived")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsReminderSent")
                         .HasColumnType("bit");
 
                     b.Property<string>("OrderNumber")
@@ -404,9 +376,6 @@ namespace BabyShop.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
-
-                    b.Property<DateTime?>("ReminderSentAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ShippedAt")
                         .HasColumnType("datetime2");
@@ -443,6 +412,10 @@ namespace BabyShop.Infrastructure.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<string>("UserName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OrderNumber")
@@ -476,9 +449,6 @@ namespace BabyShop.Infrastructure.Migrations
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ProductId1")
-                        .HasColumnType("int");
-
                     b.Property<string>("ProductName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -499,8 +469,6 @@ namespace BabyShop.Infrastructure.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("ProductId");
-
-                    b.HasIndex("ProductId1");
 
                     b.ToTable("OrderItems");
                 });
@@ -592,7 +560,8 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.Property<string>("Group")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -627,9 +596,8 @@ namespace BabyShop.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AgeRange")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
@@ -642,20 +610,19 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
-                    b.Property<int>("Gender")
-                        .HasColumnType("int");
+                    b.Property<string>("Gender")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -675,34 +642,24 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<int>("SoldCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("ViewCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AgeRange");
-
                     b.HasIndex("CategoryId");
-
-                    b.HasIndex("Gender");
 
                     b.HasIndex("Slug")
                         .IsUnique();
-
-                    b.HasIndex("Gender", "AgeRange");
 
                     b.ToTable("Products");
                 });
@@ -811,20 +768,16 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.Property<string>("Priority")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Medium");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int?>("ProductId")
                         .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Open");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Subject")
                         .IsRequired()
@@ -882,7 +835,8 @@ namespace BabyShop.Infrastructure.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<int>("TicketId")
                         .HasColumnType("int");
@@ -954,8 +908,7 @@ namespace BabyShop.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("VerificationCode")
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("VerificationCodeExpiry")
                         .HasColumnType("datetime2");
@@ -1039,7 +992,8 @@ namespace BabyShop.Infrastructure.Migrations
                     b.HasIndex("ProductId");
 
                     b.HasIndex("UserId", "ProductId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Wishlists");
                 });
@@ -1049,7 +1003,7 @@ namespace BabyShop.Infrastructure.Migrations
                     b.HasOne("BabyShop.Core.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -1064,14 +1018,10 @@ namespace BabyShop.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("BabyShop.Core.Entities.Product", "Product")
-                        .WithMany()
+                        .WithMany("BasketItems")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("BabyShop.Core.Entities.Product", null)
-                        .WithMany("BasketItems")
-                        .HasForeignKey("ProductId1");
 
                     b.Navigation("Basket");
 
@@ -1102,8 +1052,8 @@ namespace BabyShop.Infrastructure.Migrations
             modelBuilder.Entity("BabyShop.Core.Entities.Inventory", b =>
                 {
                     b.HasOne("BabyShop.Core.Entities.Product", "Product")
-                        .WithOne("Inventory")
-                        .HasForeignKey("BabyShop.Core.Entities.Inventory", "ProductId")
+                        .WithMany("Inventories")
+                        .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1130,14 +1080,10 @@ namespace BabyShop.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("BabyShop.Core.Entities.Product", "Product")
-                        .WithMany()
+                        .WithMany("OrderItems")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("BabyShop.Core.Entities.Product", null)
-                        .WithMany("OrderItems")
-                        .HasForeignKey("ProductId1");
 
                     b.Navigation("Order");
 
@@ -1160,7 +1106,7 @@ namespace BabyShop.Infrastructure.Migrations
                     b.HasOne("BabyShop.Core.Entities.Category", "Category")
                         .WithMany("Products")
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Category");
@@ -1297,7 +1243,7 @@ namespace BabyShop.Infrastructure.Migrations
                 {
                     b.Navigation("BasketItems");
 
-                    b.Navigation("Inventory");
+                    b.Navigation("Inventories");
 
                     b.Navigation("OrderItems");
                 });

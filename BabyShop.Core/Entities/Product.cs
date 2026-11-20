@@ -22,7 +22,7 @@ public class Product : BaseEntity
     public string? ImageUrl { get; private set; }
 
     public virtual Category? Category { get; set; }
-    public virtual Inventory? Inventory { get; set; }
+    public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public virtual ICollection<BasketItem> BasketItems { get; set; } = new List<BasketItem>();
 
@@ -61,7 +61,7 @@ public class Product : BaseEntity
         CategoryId = categoryId;
     }
 
-    public int StockQuantity => Inventory?.CurrentStock ?? 0;
+    public int StockQuantity => Inventories?.Sum(i => i.CurrentStock) ?? 0;
 
     public void Deactivate() { IsActive = false; UpdatedAt = DateTime.UtcNow; }
     public void Activate() { IsActive = true; UpdatedAt = DateTime.UtcNow; }

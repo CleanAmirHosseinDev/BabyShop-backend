@@ -91,7 +91,7 @@ public class JobService : IJobService
         {
             var allProducts = await _productRepository.GetAllAsync();
             var lowStockProducts = allProducts
-                .Where(p => p.Inventory != null && p.Inventory.CurrentStock < 10)
+                .Where(p => p.Inventories.Any() && p.Inventories.Sum(i => i.CurrentStock) < 10)
                 .ToList();
 
             if (lowStockProducts.Any())
@@ -99,7 +99,7 @@ public class JobService : IJobService
                 _logger.LogWarning("⚠️ {Count} محصول موجودی کم دارند:", lowStockProducts.Count);
                 foreach (var product in lowStockProducts.Take(10))
                 {
-                    _logger.LogWarning("   • {Name}: {Stock} عدد", product.Name, product.Inventory?.CurrentStock ?? 0);
+                    _logger.LogWarning("   • {Name}: {Stock} عدد", product.Name, product.Inventories.Sum(i => i.CurrentStock));
                 }
             }
             else
